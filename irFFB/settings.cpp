@@ -11,36 +11,36 @@ HKEY Settings::getSettingsRegKey() {
             HKEY_CURRENT_USER, SETTINGS_KEY, 0, nullptr,
             REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &key, nullptr
         )
-    )
+        )
         return NULL;
     return key;
-    
+
 }
 
-LSTATUS Settings::setRegSetting(HKEY key, wchar_t *name, int val) {
-    
+LSTATUS Settings::setRegSetting(HKEY key, wchar_t* name, int val) {
+
     DWORD sz = sizeof(int);
-    return RegSetValueExW(key, name, 0, REG_DWORD, (BYTE *)&val, sz);
+    return RegSetValueExW(key, name, 0, REG_DWORD, (BYTE*)&val, sz);
 
 }
 
-LSTATUS Settings::setRegSetting(HKEY key, wchar_t *name, float val) {
+LSTATUS Settings::setRegSetting(HKEY key, wchar_t* name, float val) {
 
     DWORD sz = sizeof(float);
-    return RegSetValueExW(key, name, 0, REG_DWORD, (BYTE *)&val, sz);
+    return RegSetValueExW(key, name, 0, REG_DWORD, (BYTE*)&val, sz);
 
 }
 
 
-LSTATUS Settings::setRegSetting(HKEY key, wchar_t *name, bool val) {
+LSTATUS Settings::setRegSetting(HKEY key, wchar_t* name, bool val) {
 
     DWORD sz = sizeof(DWORD);
     DWORD dw = val ? 1 : 0;
-    return RegSetValueExW(key, name, 0, REG_DWORD, (BYTE *)&dw, sz);
+    return RegSetValueExW(key, name, 0, REG_DWORD, (BYTE*)&dw, sz);
 
 }
 
-int Settings::getRegSetting(HKEY key, wchar_t *name, int def) {
+int Settings::getRegSetting(HKEY key, wchar_t* name, int def) {
 
     int val;
     DWORD sz = sizeof(int);
@@ -52,7 +52,7 @@ int Settings::getRegSetting(HKEY key, wchar_t *name, int def) {
 
 }
 
-float Settings::getRegSetting(HKEY key, wchar_t *name, float def) {
+float Settings::getRegSetting(HKEY key, wchar_t* name, float def) {
 
     float val;
     DWORD sz = sizeof(float);
@@ -64,7 +64,7 @@ float Settings::getRegSetting(HKEY key, wchar_t *name, float def) {
 
 }
 
-bool Settings::getRegSetting(HKEY key, wchar_t *name, bool def) {
+bool Settings::getRegSetting(HKEY key, wchar_t* name, bool def) {
 
     DWORD val, sz = sizeof(DWORD);
 
@@ -74,7 +74,7 @@ bool Settings::getRegSetting(HKEY key, wchar_t *name, bool def) {
         return val > 0;
 
 }
-    
+
 Settings::Settings() {
     memset(ffdevices, 0, MAX_FFB_DEVICES * sizeof(GUID));
     ffdeviceIdx = 0;
@@ -83,28 +83,42 @@ Settings::Settings() {
 
 void Settings::setDevWnd(HWND wnd) { devWnd = wnd; }
 
-void Settings::setFfbWnd(HWND wnd) { 
-    ffbWnd = wnd; 
+void Settings::setFfbWnd(HWND wnd) {
+    ffbWnd = wnd;
     for (int i = 0; i < FFBTYPE_UNKNOWN; i++)
         SendMessage(ffbWnd, CB_ADDSTRING, 0, LPARAM(ffbTypeString(i)));
 }
-        
-void Settings::setMinWnd(sWins_t *wnd) {
-    minWnd = wnd; 
+
+void Settings::setUndersteerLateralFactorWnd(HWND wnd) {
+    understeerLateralFactorWnd = wnd;
+    for (int i = 1; i < UnknownX; i++)
+        SendMessage(understeerLateralFactorWnd, CB_ADDSTRING, 0, LPARAM(underSteerLateralFactorTypeString(i)));
+        SendMessage(understeerLateralFactorWnd, CB_SETCURSEL, (WPARAM)1, (LPARAM)0);
+            
+
+}
+
+void Settings::setMinWnd(sWins_t* wnd) {
+    minWnd = wnd;
     SendMessage(minWnd->trackbar, TBM_SETRANGE, TRUE, MAKELPARAM(0, 20));
 }
-        
-void Settings::setMaxWnd(sWins_t *wnd) { 
+
+void Settings::setMaxWnd(sWins_t* wnd) {
     maxWnd = wnd;
     SendMessage(maxWnd->trackbar, TBM_SETRANGE, TRUE, MAKELPARAM(MIN_MAXFORCE, 65));
 }
 
-void Settings::setBumpsWnd(sWins_t *wnd) { bumpsWnd = wnd; }
-void Settings::setDampingWnd(sWins_t *wnd) { dampingWnd = wnd; }
-void Settings::setSopWnd(sWins_t *wnd) { sopWnd = wnd; } 
-void Settings::setSopOffsetWnd(sWins_t *wnd) { sopOffsetWnd = wnd; }
-void Settings::setUndersteerWnd(sWins_t *wnd) { understeerWnd = wnd; }
-void Settings::setUndersteerOffsetWnd(sWins_t *wnd) { understeerOffsetWnd = wnd; }
+void Settings::setBumpsWnd(sWins_t* wnd) { bumpsWnd = wnd; }
+void Settings::setDampingWnd(sWins_t* wnd) { dampingWnd = wnd; }
+void Settings::setSopWnd(sWins_t* wnd) { sopWnd = wnd; }
+void Settings::setSopOffsetWnd(sWins_t* wnd) { sopOffsetWnd = wnd; }
+void Settings::setUndersteerWnd(sWins_t* wnd) { understeerWnd = wnd; }
+void Settings::setUndersteerOffsetWnd(sWins_t* wnd) { understeerOffsetWnd = wnd; }
+void Settings::setUndersteerYawWnd(sWins_t* wnd) { understeerYawWnd = wnd; }
+
+//delete on cleanup as it is set above
+//void Settings::setUndersteerLateralWnd(sWins_t* wnd) { understeerLateralWnd = wnd; }
+
 void Settings::setUse360Wnd(HWND wnd) { use360Wnd = wnd; }
 void Settings::setReduceWhenParkedWnd(HWND wnd) { reduceWhenParkedWnd = wnd; }
 void Settings::setCarSpecificWnd(HWND wnd) { carSpecificWnd = wnd; }
@@ -118,8 +132,8 @@ void Settings::clearFfbDevices() {
     SendMessage(devWnd, CB_RESETCONTENT, 0, 0);
 }
 
-void Settings::addFfbDevice(GUID dev, const wchar_t *name) {
-    
+void Settings::addFfbDevice(GUID dev, const wchar_t* name) {
+
     if (ffdeviceIdx == MAX_FFB_DEVICES)
         return;
     ffdevices[ffdeviceIdx++] = dev;
@@ -143,7 +157,7 @@ bool Settings::isFfbDevicePresent() {
             return true;
     return false;
 }
-        
+
 void Settings::setFfbType(int type) {
     if (type >= FFBTYPE_UNKNOWN)
         return;
@@ -151,8 +165,18 @@ void Settings::setFfbType(int type) {
     SendMessage(ffbWnd, CB_SETCURSEL, ffbType, 0);
     EnableWindow(
         use360Wnd,
-        ffbType == FFBTYPE_DIRECT_FILTER || ffbType == FFBTYPE_DIRECT_FILTER_720
-    );    
+        ffbType == FFBTYPE_DIRECT_FILTER 
+    );
+}
+
+void Settings::setUndersteerLateralFactorType(int type) {
+    if (type >= UnknownX)
+        return;
+    underSteerLateralFactorType = type;
+    understeerLateralFactor = float(type);
+    SendMessage(understeerLateralFactorWnd, CB_SETCURSEL, underSteerLateralFactorType, 0);
+
+
 }
 
 bool Settings::setMinForce(int min, HWND wnd) {
@@ -167,7 +191,7 @@ bool Settings::setMinForce(int min, HWND wnd) {
     }
     return true;
 }
- 
+
 bool Settings::setMaxForce(int max, HWND wnd) {
     if (max < MIN_MAXFORCE || max > MAX_MAXFORCE)
         return false;
@@ -251,6 +275,38 @@ bool Settings::setUndersteerFactor(float factor, HWND wnd) {
     return true;
 }
 
+bool Settings::setUndersteerYawFactor(float factor, HWND wnd) {
+    if (factor < 0.0f || factor > 100.0f)
+        return false;
+    understeerYawFactor = factor;
+    if (wnd != understeerYawWnd->trackbar)
+        SendMessage(understeerYawWnd->trackbar, TBM_SETPOS, TRUE, (int)factor);
+    if (wnd != understeerYawWnd->value) {
+        swprintf_s(strbuf, L"%.1f", factor);
+        SendMessage(understeerYawWnd->value, WM_SETTEXT, NULL, LPARAM(strbuf));
+    }
+    return true;
+}
+
+
+bool Settings::setUndersteerLateralFactor(int factor, HWND wnd) {
+    if (factor < 1 || factor > 3)
+        return false;
+    understeerLateralFactor = factor;
+
+    //delete on cleanup
+
+    /*
+    if (wnd != understeerLateralWnd->trackbar)
+        SendMessage(understeerLateralWnd->trackbar, TBM_SETPOS, TRUE, (int)factor);
+    if (wnd != understeerLateralWnd->value) {
+        swprintf_s(strbuf, L"%.1f", factor);
+        SendMessage(understeerLateralWnd->value, WM_SETTEXT, NULL, LPARAM(strbuf));
+    }
+    */
+    return true;
+}
+
 bool Settings::setUndersteerOffset(float offset, HWND wnd) {
     if (offset < 0.0f || offset > 100.0f)
         return false;
@@ -269,7 +325,7 @@ void Settings::setUse360ForDirect(bool set) {
     SendMessage(use360Wnd, BM_SETCHECK, set ? BST_CHECKED : BST_UNCHECKED, NULL);
 }
 
-void Settings::setUseCarSpecific(bool set, char *car) {
+void Settings::setUseCarSpecific(bool set, char* car) {
 
     if (!useCarSpecific && set) {
         writeGenericSettings();
@@ -290,12 +346,12 @@ void Settings::setUseCarSpecific(bool set, char *car) {
 
 }
 
-void Settings::setReduceWhenParked(bool reduce) { 
-    reduceWhenParked = reduce; 
+void Settings::setReduceWhenParked(bool reduce) {
+    reduceWhenParked = reduce;
     SendMessage(reduceWhenParkedWnd, BM_SETCHECK, reduce ? BST_CHECKED : BST_UNCHECKED, NULL);
 }
 
-void Settings::setRunOnStartup(bool run) { 
+void Settings::setRunOnStartup(bool run) {
 
     HKEY regKey;
     wchar_t module[MAX_PATH];
@@ -304,14 +360,14 @@ void Settings::setRunOnStartup(bool run) {
     SendMessage(runOnStartupWnd, BM_SETCHECK, run ? BST_CHECKED : BST_UNCHECKED, NULL);
 
     DWORD len = GetModuleFileNameW(NULL, module, MAX_PATH);
-    
+
     if (RegOpenKeyExW(HKEY_CURRENT_USER, RUN_ON_STARTUP_KEY, 0, KEY_ALL_ACCESS, &regKey)) {
         text(L"Failed to open startup registry key");
         return;
     }
 
     if (run) {
-        if (RegSetValueExW(regKey, L"irFFB", 0, REG_SZ, (BYTE *)&module, ++len * sizeof(wchar_t)))
+        if (RegSetValueExW(regKey, L"irFFB", 0, REG_SZ, (BYTE*)&module, ++len * sizeof(wchar_t)))
             text(L"Failed to create startup registry value");
     }
     else
@@ -347,7 +403,15 @@ float Settings::getUndersteerOffsetSetting() {
     return understeerOffset * 250.0f;
 }
 
-void Settings::writeCarSpecificSetting() { 
+float Settings::getUndersteerYawFactorSetting() {
+    return understeerYawFactor;
+}
+
+float Settings::getUndersteerLateralFactorSetting() {
+    return understeerLateralFactor;
+}
+
+void Settings::writeCarSpecificSetting() {
     HKEY key = getSettingsRegKey();
     if (key == NULL)
         return;
@@ -355,7 +419,7 @@ void Settings::writeCarSpecificSetting() {
     RegCloseKey(key);
 }
 
-void Settings::readRegSettings(char *car) {
+void Settings::readRegSettings(char* car) {
 
     wchar_t dguid[GUIDSTRING_MAX];
     DWORD dgsz = sizeof(dguid);
@@ -369,7 +433,7 @@ void Settings::readRegSettings(char *car) {
         return;
     }
 
-        
+
     if (!RegGetValue(key, nullptr, L"device", RRF_RT_REG_SZ, nullptr, dguid, &dgsz))
         if (FAILED(IIDFromString(dguid, &devGuid)))
             devGuid = GUID_NULL;
@@ -380,7 +444,7 @@ void Settings::readRegSettings(char *car) {
     setUseCarSpecific(getRegSetting(key, L"useCarSpecific", false), car);
 
     RegCloseKey(key);
-    
+
 }
 
 void Settings::readGenericSettings() {
@@ -390,7 +454,7 @@ void Settings::readGenericSettings() {
     HKEY key = getSettingsRegKey();
 
     if (key == NULL) {
-        setFfbType(FFBTYPE_DIRECT_FILTER);
+        setFfbType(FFBTYPE_360HZ);
         setMinForce(0, (HWND)-1);
         setMaxForce(45, (HWND)-1);
         setBumpsFactor(0.0f, (HWND)-1);
@@ -400,10 +464,13 @@ void Settings::readGenericSettings() {
         setUndersteerFactor(0.0f, (HWND)-1);
         setUndersteerOffset(0.0f, (HWND)-1);
         setUse360ForDirect(true);
+        setUndersteerYawFactor(0.0f, (HWND)-1);
+        setUndersteerLateralFactor(0, (HWND)-1);
+
         return;
     }
 
-    setFfbType(getRegSetting(key, L"ffb", FFBTYPE_DIRECT_FILTER));
+    setFfbType(getRegSetting(key, L"ffb", FFBTYPE_360HZ));
     setMaxForce(getRegSetting(key, L"maxForce", 45), (HWND)-1);
     setMinForce(getRegSetting(key, L"minForce", 0), (HWND)-1);
     setBumpsFactor(getRegSetting(key, L"bumpsFactor", 0.0f), (HWND)-1);
@@ -412,7 +479,10 @@ void Settings::readGenericSettings() {
     setSopOffset(getRegSetting(key, L"yawOffset", 0.0f), (HWND)-1);
     setUndersteerFactor(getRegSetting(key, L"understeerFactor", 0.0f), (HWND)-1);
     setUndersteerOffset(getRegSetting(key, L"understeerOffset", 0.0f), (HWND)-1);
-    setUse360ForDirect(getRegSetting(key, L"use360ForDirect", true));
+    setUse360ForDirect(getRegSetting(key, L"use360ForDirect", false));
+    setUndersteerYawFactor(getRegSetting(key, L"understeerYawFactor", 0.0f), (HWND)-1);
+    setUndersteerYawFactor(getRegSetting(key, L"understeerLateralFactor", 0), (HWND)-1);
+
 
     RegCloseKey(key);
 
@@ -420,18 +490,18 @@ void Settings::readGenericSettings() {
 
 void Settings::writeRegSettings() {
 
-    wchar_t *guid;
+    wchar_t* guid;
     int len;
     HKEY key = getSettingsRegKey();
 
     if (key == NULL)
         return;
 
-    if (SUCCEEDED(StringFromCLSID(devGuid, (LPOLESTR *)&guid))) {
+    if (SUCCEEDED(StringFromCLSID(devGuid, (LPOLESTR*)&guid))) {
         len = (lstrlenW(guid) + 1) * sizeof(wchar_t);
-        RegSetValueEx(key, L"device", 0, REG_SZ, (BYTE *)guid, len);
+        RegSetValueEx(key, L"device", 0, REG_SZ, (BYTE*)guid, len);
     }
-    
+
     setRegSetting(key, L"reduceWhenParked", getReduceWhenParked());
     setRegSetting(key, L"runOnStartup", getRunOnStartup());
     setRegSetting(key, L"startMinimised", getStartMinimised());
@@ -455,12 +525,17 @@ void Settings::writeGenericSettings() {
     setRegSetting(key, L"maxForce", maxForce);
     setRegSetting(key, L"minForce", getMinForceSetting());
     setRegSetting(key, L"use360ForDirect", use360ForDirect);
+    setRegSetting(key, L"understeerFactor", understeerFactor);
+    setRegSetting(key, L"understeerOffset", understeerOffset);
+    setRegSetting(key, L"understeerYawFactor", understeerYawFactor);
+    setRegSetting(key, L"understeerLateralFactor", understeerLateralFactor);
+
 
     RegCloseKey(key);
 
 }
 
-void Settings::readSettingsForCar(char *car) {
+void Settings::readSettingsForCar(char* car) {
 
     PWSTR path = getIniPath();
 
@@ -475,7 +550,7 @@ void Settings::readSettingsForCar(char *car) {
     char carName[MAX_CAR_NAME];
     int type = 2, min = 0, max = 45, longLoad = 1, use360 = 1;
     float bumps = 0.0f, damping = 0.0f, yaw = 0.0f, yawOffset = 0.0f;
-    float understeer = 0.0f, understeerOffset = 0.0f;
+    float understeer = 0.0f, understeerOffset = 0.0f, understeerYawFactor = 0.0f, understeerLateralFactor = 0.0f;
 
     memset(carName, 0, sizeof(carName));
 
@@ -485,9 +560,9 @@ void Settings::readSettingsForCar(char *car) {
                 line.c_str(), INI_SCAN_FORMAT,
                 carName, sizeof(carName),
                 &type, &min, &max, &bumps, &damping, &longLoad, &use360, &yaw,
-                &yawOffset, &understeer, &understeerOffset
+                &yawOffset, &understeer, &understeerOffset, &understeerYawFactor, &understeerLateralFactor
             ) < 8
-        )
+            )
             continue;
         if (strcmp(carName, car) == 0)
             break;
@@ -508,6 +583,8 @@ void Settings::readSettingsForCar(char *car) {
     setUndersteerFactor(understeer, (HWND)-1);
     setUndersteerOffset(understeerOffset, (HWND)-1);
     setUse360ForDirect(use360 > 0);
+    setUndersteerYawFactor(understeerYawFactor, (HWND)-1);
+    setUndersteerLateralFactor(understeerLateralFactor, (HWND)-1);
 
 DONE:
     iniFile.close();
@@ -515,7 +592,7 @@ DONE:
 
 }
 
-void Settings::writeSettingsForCar(char *car) {
+void Settings::writeSettingsForCar(char* car) {
 
     PWSTR path = getIniPath();
 
@@ -535,7 +612,7 @@ void Settings::writeSettingsForCar(char *car) {
     char carName[MAX_CAR_NAME], buf[256];
     int type = 2, min = 0, max = 45, longLoad = 1, use360 = 1;
     float bumps = 0.0f, damping = 0.0f, yaw = 0.0f, yawOffset = 0.0f;
-    float understeer = 0.0f, understeerOffset = 0.0f;
+    float understeer = 0.0f, understeerOffset = 0.0f, understeerYawFactor = 0.0f, understeerLateralFactor = 0.0f;
     bool written = false, iniPresent = iniFile.good();
 
     text(L"Writing settings for car %s", car);
@@ -551,9 +628,9 @@ void Settings::writeSettingsForCar(char *car) {
                 line.c_str(), INI_SCAN_FORMAT,
                 carName, sizeof(carName),
                 &type, &min, &max, &bumps, &damping, &longLoad, &use360,
-                &yaw, &yawOffset, &understeer, &understeerOffset
+                &yaw, &yawOffset, &understeer, &understeerOffset, &understeerYawFactor, &understeerLateralFactor
             ) < 8
-        ) {
+            ) {
             strcpy_s(buf, line.c_str());
             writeWithNewline(tmpFile, buf);
             continue;
@@ -567,7 +644,7 @@ void Settings::writeSettingsForCar(char *car) {
             buf, INI_PRINT_FORMAT,
             car, ffbType, getMinForceSetting(), maxForce, getBumpsSetting(),
             dampingFactor, 1, use360ForDirect, sopFactor, getSopOffsetSetting(),
-            understeerFactor, getUndersteerOffsetSetting()
+            understeerFactor, getUndersteerOffsetSetting(), getUndersteerYawFactor(), getUndersteerLateralFactor()
         );
         writeWithNewline(tmpFile, buf);
         written = true;
@@ -577,7 +654,7 @@ void Settings::writeSettingsForCar(char *car) {
         goto MOVE;
 
     if (!iniPresent) {
-        sprintf_s(buf, "car:ffbType:minForce:maxForce:bumps:damping:notUsed:effUse360:sop:sopOffset:understeer:understeerOffset\r\n\r\n");
+        sprintf_s(buf, "car:ffbType:minForce:maxForce:bumps:damping:notUsed:effUse360:sop:sopOffset:understeer:understeerOffset:understeer force: understeer force multiplier\r\n\r\n");
         tmpFile.write(buf, strlen(buf));
         sprintf_s(buf, "ffbType          | 0 = 360, 1 = 360I, 2 = 60DF_360, 3 = 60DF_720\r\n");
         tmpFile.write(buf, strlen(buf));
@@ -601,13 +678,17 @@ void Settings::writeSettingsForCar(char *car) {
         tmpFile.write(buf, strlen(buf));
         sprintf_s(buf, "understeerOffset | min = 0, max = 100\r\n\r\n");
         tmpFile.write(buf, strlen(buf));
+        sprintf_s(buf, "understeer force | min = 0, max = 100\r\n\r\n");
+        tmpFile.write(buf, strlen(buf));
+        sprintf_s(buf, "understeer force multiplier | min = 1, max = 3\r\n\r\n");
+        tmpFile.write(buf, strlen(buf));
     }
 
     sprintf_s(
         buf, INI_PRINT_FORMAT,
         car, ffbType, getMinForceSetting(), maxForce, getBumpsSetting(),
         dampingFactor, 1, use360ForDirect, sopFactor, getSopOffsetSetting(),
-        understeerFactor, getUndersteerOffsetSetting()
+        understeerFactor, getUndersteerOffsetSetting(), getUndersteerYawFactor(), getUndersteerLateralFactor()
     );
     writeWithNewline(tmpFile, buf);
 
@@ -623,20 +704,29 @@ MOVE:
 
 }
 
-wchar_t *Settings::ffbTypeString(int type) {
+wchar_t* Settings::ffbTypeString(int type) {
     switch (type) {
-        case FFBTYPE_360HZ:             return L"360 Hz";
-        case FFBTYPE_360HZ_INTERP:      return L"360 Hz interpolated";
-        case FFBTYPE_DIRECT_FILTER:     return L"60 Hz direct filtered 360";
-        case FFBTYPE_DIRECT_FILTER_720: return L"60 Hz direct filtered 720";
-        default:                        return L"Unknown FFB type";
+    case FFBTYPE_360HZ:             return L"360 Hz";
+    case FFBTYPE_360HZ_INTERP:      return L"360 Hz interpolated";
+    case FFBTYPE_DIRECT_FILTER:     return L"60 Hz direct filtered 360";
+    default:                        return L"Unknown FFB type";
+    }
+}
+
+wchar_t* Settings::underSteerLateralFactorTypeString(int type) {
+
+    switch (type) {
+    case OneX: return L"1x";
+    case TwoX: return L"2x";
+    case ThreeX: return L"3x";
+    default:    return L"Unknown Multiplier";
     }
 }
 
 PWSTR Settings::getIniPath() {
 
     PWSTR docsPath;
-    wchar_t *path;
+    wchar_t* path;
 
     if (SHGetKnownFolderPath(FOLDERID_Documents, 0, NULL, &docsPath) != S_OK)
         return nullptr;
@@ -655,14 +745,14 @@ PWSTR Settings::getLogPath() {
 
     PWSTR docsPath;
     wchar_t buf[64];
-    wchar_t *path;
+    wchar_t* path;
     SYSTEMTIME lt;
 
     if (SHGetKnownFolderPath(FOLDERID_Documents, 0, NULL, &docsPath) != S_OK)
         return nullptr;
 
     GetLocalTime(&lt);
-    
+
     lstrcpyW(buf, L"\\irFFB-");
     int len = wcslen(buf) * sizeof(wchar_t);
     StringCbPrintf(
@@ -680,7 +770,7 @@ PWSTR Settings::getLogPath() {
 
 }
 
-void Settings::writeWithNewline(std::ofstream &file, char *buf) {
+void Settings::writeWithNewline(std::ofstream& file, char* buf) {
     int len = strlen(buf);
     buf[len] = '\n';
     file.write(buf, len + 1);

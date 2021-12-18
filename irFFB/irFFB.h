@@ -42,8 +42,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define SETTINGS_KEY L"Software\\irFFB\\Settings"
 #define RUN_ON_STARTUP_KEY L"Software\\Microsoft\\Windows\\CurrentVersion\\Run"
 #define INI_PATH L"\\irFFB.ini"
-#define INI_SCAN_FORMAT  "%[^:]:%d:%d:%d:%f:%f:%d:%d:%f:%f:%f:%f"
-#define INI_PRINT_FORMAT "%s:%d:%d:%d:%0.1f:%0.1f:%d:%d:%0.1f:%0.1f:%0.1f:%0.1f\r"
+#define INI_SCAN_FORMAT  "%[^:]:%d:%d:%d:%f:%f:%d:%d:%f:%f:%f:%f:%f:%f"
+#define INI_PRINT_FORMAT "%s:%d:%d:%d:%0.1f:%0.1f:%d:%d:%0.1f:%0.1f:%0.1f:%0.1f:%0.1f:%0.1f\r"
 #define MAX_CAR_NAME 32
 #define MAX_LATENCY_TIMES 32
 #define LATENCY_MIN_DX 60
@@ -74,8 +74,15 @@ enum ffbType {
     FFBTYPE_360HZ,
     FFBTYPE_360HZ_INTERP,
     FFBTYPE_DIRECT_FILTER,
-    FFBTYPE_DIRECT_FILTER_720,
     FFBTYPE_UNKNOWN
+};
+
+enum underSteerMultiplier {
+    OneX = 1,
+    TwoX = 2,
+    ThreeX = 3,
+    UnknownX = 4
+
 };
 
 typedef struct sWins {
@@ -97,7 +104,7 @@ struct LogiLedData {
 };
 
 struct understeerCoefs {
-    char *car;
+    char* car;
     float yawRateMult;
     float latAccelDiv;
 };
@@ -110,16 +117,16 @@ BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
-HWND combo(HWND, wchar_t *, int, int); 
-sWins_t *slider(HWND, wchar_t *, int, int, wchar_t *, wchar_t *, bool);
-HWND checkbox(HWND, wchar_t *, int, int); 
+HWND combo(HWND, wchar_t*, int, int);
+sWins_t* slider(HWND, wchar_t*, int, int, wchar_t*, wchar_t*, bool);
+HWND checkbox(HWND, wchar_t*, int, int);
 
 bool initVJD();
-void text(wchar_t *, ...);
-void text(wchar_t *, char *);
-void debug(wchar_t *);
-template <typename... T> void debug(wchar_t *,  T...);
-void setCarStatus(char *);
+void text(wchar_t*, ...);
+void text(wchar_t*, char*);
+void debug(wchar_t*);
+template <typename... T> void debug(wchar_t*, T...);
+void setCarStatus(char*);
 void setConnectedStatus(bool);
 void setOnTrackStatus(bool);
 void enumDirectInput();
@@ -132,7 +139,7 @@ inline void setFFB(int);
 void initAll();
 void releaseAll();
 
-BOOL CALLBACK EnumFFDevicesCallback(LPCDIDEVICEINSTANCE, VOID *);
+BOOL CALLBACK EnumFFDevicesCallback(LPCDIDEVICEINSTANCE, VOID*);
 
 // The compiler seems to like branches
 inline float minf(float a, float b) {

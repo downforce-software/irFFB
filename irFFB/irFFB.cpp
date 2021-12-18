@@ -13,6 +13,21 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+Modified by Tom Hogue Apr 2021:
+There is a table below with a list of road cars and their associated values for yaw and lateral factors
+in calculating the force level for an oversteer condition to occur.  I modified irFFB so that those values
+could be set in the gui as Oversteer Force and a Force Multiplier.  Those two settings need to be set for a 
+car and track in order to get the right level.  To set them, drive the car on the track and as you
+go into a corner, turn the wheel AGGRESSIVELY past 90 degrees to force an oversteer condition.  You should
+feel the wheel "break away" as you would in real life where the wheels are turned but the car keeps going straight.
+
+Most of the time the multiplier will be 2 which is default and you should target the oversteer force around 30.  
+With that said, these settings will depend A LOT on caster settings.  I have found some cars will need the multiplier at 1.
+Once you feel it break away, keep tuning the force until you like the feel but can still tell when the car enters an oversteer condition.
+You will find in a race that you can hold that edge and find the perfect line.
+In my experience, this gives the <2NM wheels a chance at being competitive again and will make your laps more consistent.
+
 */
 
 #include "irFFB.h"
@@ -74,16 +89,44 @@ float firc12[] = {
 
 char car[MAX_CAR_NAME];
 understeerCoefs usteerCoefs[] = {
-    { "audir8gt3",          52.0f, 78.0f  },
-    { "ferrari488gt3",      46.0f, 54.0f  },
-    { "ferrari488gte",      44.0f, 46.0f  },
+    { "astonmartin dbr9",   46.0f, 78.0f  },
+    { "audir8gt3",               52.0f, 78.0f  },
+    { "bmwm8gte",           46.0f, 78.0f  },
+    { "bmwm4gt4",           40.0f, 70.0f  },
+    { "bmwz4gt3",           54.0f, 80.0f  },
+    { "bmwm4gt3",           37.5f, 82.0f  },
+    { "c6r",                        40.5f, 82.0f  },
+    { "c8rvettegte",            48.0f, 78.0f  },
+    { "dallaraf3",              38.0f, 102.0f },
+    { "dallarair18",            44.0f, 110.0f },
+    { "dallarap217",            44.0f, 110.0f },
+    { "ferrari488gt3",          52.0f, 78.0f  },
+    { "ferrari488gte",          44.0f, 76.0f  },
+    { "fordgt gt3",              52.0f, 78.0f  },
+    { "formulamazda",       34.5f, 96.0f  },
     { "formularenault20",   34.5f, 96.0f  },
-    { "lotus79",            27.8f, 104.0f },
+    { "formularenault35",   44.0f, 110.0f },
+    { "fr500s",                     40.0f, 70.0f  },
+    { "hpdarx01c",              44.0f, 110.0f },
+    { "indypropm18",         34.5f, 100.0f },
+    { "lamborghinievogt3",  52.0f, 78.0f  },
+    { "lotus79",                    27.8f, 104.0f },
+    { "mclaren570sgt4",     40.0f, 70.0f  },
+    { "mclarenmp4",          52.0f, 78.0f  },
     { "mercedesamggt3",     37.5f, 82.0f  },
     { "mx5 mx52016",        36.0f, 96.0f  },
+    { "nissangtpzxt",           44.0f, 110.0f },
+    { "porsche718gt4",      40.0f, 70.0f  },
     { "porsche911cup",      46.0f, 88.0f  },
-    { "porsche991rsr",      42.0f, 72.0f  },
-    { "rt2000",             25.0f, 86.0f  }
+    { "porsche991rsr",          42.0f, 72.0f  },
+    { "radical sr8",                40.0f, 100.0f },
+    { "rt2000",                     25.0f, 86.0f  },
+    { "rufrt12r track",          46.0f, 88.0f  },
+    { "skmodified",          35.0f, 86.0f  },
+    { "skmodified tour",          35.0f, 86.0f  },
+    { "trucks fordf150",          35.0f, 86.0f  },
+    { "trucks sliverado",          35.0f, 86.0f  }
+
 };
 
 int force = 0;
@@ -278,8 +321,7 @@ DWORD WINAPI directFFBThread(LPVOID lParam) {
         WaitForSingleObject(ffbEvent, INFINITE);
 
         if (
-            settings.getFfbType() != FFBTYPE_DIRECT_FILTER &&
-            settings.getFfbType() != FFBTYPE_DIRECT_FILTER_720
+            settings.getFfbType() != FFBTYPE_DIRECT_FILTER 
         )
             continue;
         
@@ -298,95 +340,7 @@ DWORD WINAPI directFFBThread(LPVOID lParam) {
         if (!use360)
             s += scaleTorque(suspForce);
 
-        if (settings.getFfbType() == FFBTYPE_DIRECT_FILTER_720) {
-
-            prod[0] = s * firc12[0];
-
-            _asm {
-                movaps xmm0, xmmword ptr prod
-                movaps xmm1, xmmword ptr prod+16
-                movaps xmm2, xmmword ptr prod+32
-                addps xmm0, xmm1
-                addps xmm0, xmm2
-                haddps xmm0, xmm0
-                haddps xmm0, xmm0
-                cvttss2si eax, xmm0
-                mov dword ptr r, eax
-            }
-
-            if (use360)
-                r += scaleTorque(lastSuspForce + (suspForceST[0] - lastSuspForce) / 2.0f);
-
-            r += scaleTorque(lastYawForce + (yawForce[0] - lastYawForce) / 2.0f);
-
-            setFFB(r);
-
-            for (int i = 1; i < DIRECT_INTERP_SAMPLES * 2 - 1; i++) {
-
-                prod[i] = s * firc12[i];
-
-                _asm {
-                    movaps xmm0, xmmword ptr prod
-                    movaps xmm1, xmmword ptr prod + 16
-                    movaps xmm2, xmmword ptr prod + 32
-                    addps xmm0, xmm1
-                    addps xmm0, xmm2
-                    haddps xmm0, xmm0
-                    haddps xmm0, xmm0
-                    cvttss2si eax, xmm0
-                    mov dword ptr r, eax
-                }
-
-                int idx = (i - 1) >> 1;
-                bool odd = i & 1;
-
-                if (use360)
-                    r +=
-                        scaleTorque(
-                            odd ?
-                                suspForceST[idx] :
-                                suspForceST[idx]  + (suspForceST[idx + 1] - suspForceST[idx]) / 2.0f
-                        );
-
-                r += 
-                    scaleTorque(
-                        odd ?
-                            yawForce[idx] :
-                            yawForce[idx] + (yawForce[idx + 1] - yawForce[idx]) / 2.0f
-                    );
-
-                sleepSpinUntil(&start, 0, 1380 * i);
-                setFFB(r);
-
-            }
-
-            prod[DIRECT_INTERP_SAMPLES * 2 - 1] = s * firc12[DIRECT_INTERP_SAMPLES * 2 - 1];
-            _asm {
-                movaps xmm0, xmmword ptr prod
-                movaps xmm1, xmmword ptr prod + 16
-                movaps xmm2, xmmword ptr prod + 32
-                addps xmm0, xmm1
-                addps xmm0, xmm2
-                haddps xmm0, xmm0
-                haddps xmm0, xmm0
-                cvttss2si eax, xmm0
-                mov dword ptr r, eax
-            }
-
-            if (use360)
-                r += scaleTorque(suspForceST[DIRECT_INTERP_SAMPLES - 1]);
-
-            r += scaleTorque(yawForce[DIRECT_INTERP_SAMPLES - 1]);
-
-            sleepSpinUntil(&start, 0, 1380 * (DIRECT_INTERP_SAMPLES * 2 - 1));
-            setFFB(r);
-
-            lastSuspForce = suspForceST[DIRECT_INTERP_SAMPLES - 1];
-            lastYawForce = yawForce[DIRECT_INTERP_SAMPLES - 1];
-
-            continue;
-
-        }
+      
             
         prod[0] = s * firc6[0];
         r = (int)(prod[0] + prod[1] + prod[2] + prod[3] + prod[4] + prod[5]) +
@@ -480,8 +434,9 @@ float getCarRedline() {
     return 8000.0f;
 
 }
-
+//We are not using the understeer coffficients table any more but left code in place
 understeerCoefs *getCarUsteerCoeffs(char *car) {
+ 
 
     for (int i = 0; i < sizeof(usteerCoefs) / sizeof(usteerCoefs[0]); i++)
         if (!strcmp(car, usteerCoefs[i].car)) {
@@ -518,13 +473,16 @@ void deviceChange() {
 
     debug(L"Device change notification");
     if (!onTrack) {
-        debug(L"Not on track, processing device change");
+        text(L"Device Change: Car is off track");
+        debug(L"Device Change: Not on track, processing device change");
         deviceChangePending = false;
         enumDirectInput();
         if (!settings.isFfbDevicePresent())
+            text(L"Device Change: Releasing Wheel Connection");
             releaseDirectInput();
     }
     else {
+        text(L"Car is on track");
         debug(L"Deferring device change processing whilst on track");
         deviceChangePending = true;
     }
@@ -615,6 +573,7 @@ int APIENTRY wWinMain(
     int STnumSamples = 0, STmaxIdx = 0, lastTrackSurface = -1;
     float halfSteerMax = 0, lastTorque = 0, lastSuspForce = 0, redline;
     float yaw = 0.0f, yawFilter[DIRECT_INTERP_SAMPLES];
+    int understeerYaw = 0, understeerLateral = 0;
 
     understeerCoefs *usCoefs;
 
@@ -715,7 +674,7 @@ int APIENTRY wWinMain(
             irsdk_startup() && (hdr = irsdk_getHeader()) &&
             hdr->status & irsdk_stConnected && hdr->bufLen != dataLen && hdr->bufLen != 0
         ) {
-
+            text(L"Top of While True: Connected to New iRacing Session");
             debug(L"New iRacing session");
 
             handles[0] = hDataValidEvent;
@@ -739,10 +698,12 @@ int APIENTRY wWinMain(
              debug(L"Redline is %d rpm", (int)redline);
             
             usCoefs = getCarUsteerCoeffs(car);
-            EnableWindow(settings.getUndersteerWnd()->trackbar, usCoefs != nullptr);
-            EnableWindow(settings.getUndersteerWnd()->value, usCoefs != nullptr);
-            EnableWindow(settings.getUndersteerOffsetWnd()->trackbar, usCoefs != nullptr);
-            EnableWindow(settings.getUndersteerOffsetWnd()->value, usCoefs != nullptr);
+            //  Delete on clean up
+          //  EnableWindow(settings.getUndersteerWnd()->trackbar, usCoefs != nullptr);
+          //  EnableWindow(settings.getUndersteerWnd()->value, usCoefs != nullptr);
+          //  EnableWindow(settings.getUndersteerOffsetWnd()->trackbar, usCoefs != nullptr);
+          //  EnableWindow(settings.getUndersteerOffsetWnd()->value, usCoefs != nullptr);
+ 
 
             // Inform iRacing of the maxForce setting
             irsdk_broadcastMsg(irsdk_BroadcastFFBCommand, irsdk_FFBCommand_MaxForce, (float)settings.getMaxForce());
@@ -807,6 +768,9 @@ int APIENTRY wWinMain(
                         CFshockDeflLast = -10000.0f;
                 clippedSamples = samples = lastGear = 0;
                 memset(yawFilter, 0, DIRECT_INTERP_SAMPLES * sizeof(float));
+
+              //  text(L"Understeer Yaw Factor =%.02f% ", settings.getUndersteerYawFactor());
+              //  text(L"Understeer Lateral Factor = %.02f% ", settings.getUndersteerLateralFactor());
             }
 
             if (*trackSurface != lastTrackSurface) {
@@ -871,9 +835,15 @@ int APIENTRY wWinMain(
                     if (jetseat && jetseat->isEnabled() && asa > sopOffset)
                         jetseat->yawEffect(sa);
 
-                    if (usCoefs != nullptr && settings.getUndersteerFactor() > 0.0f) {
 
-                        reqSteer = abs((*yawRate * usCoefs->yawRateMult) / *speed + *latAccel / usCoefs->latAccelDiv);
+
+                        if (settings.getUndersteerYawFactor() > 0.00f && settings.getUndersteerLateralFactor() > 0.00f && settings.getUndersteerFactor() > 0.0f) {
+                        
+                            // Old understeer calculation
+                        //reqSteer = abs((*yawRate * usCoefs->yawRateMult) / *speed + *latAccel / usCoefs->latAccelDiv);
+
+                        //reqSteer = abs((*yawRate * settings.getUndersteerYawFactor()) / *speed + *latAccel / settings.getUndersteerLateralFactor());
+                         reqSteer = abs((*yawRate * settings.getUndersteerYawFactor()) / *speed + *latAccel / (settings.getUndersteerYawFactor() / settings.getUndersteerLateralFactor()));
                         uSteer = minf(abs(*steer) - reqSteer - USTEER_MIN_OFFSET - settings.getUndersteerOffset(), 1.0f);
 
                         if (uSteer > 0.0f)
@@ -1060,8 +1030,7 @@ int APIENTRY wWinMain(
 
             if (
                 !*isOnTrack ||
-                settings.getFfbType() == FFBTYPE_DIRECT_FILTER ||
-                settings.getFfbType() == FFBTYPE_DIRECT_FILTER_720
+                settings.getFfbType() == FFBTYPE_DIRECT_FILTER 
             )
                 continue;
 
@@ -1158,7 +1127,8 @@ int APIENTRY wWinMain(
         }
 
         // Did we lose iRacing?
-        if (hdr && numHandles > 0 && !(hdr->status & irsdk_stConnected)) {
+        if (numHandles > 0 && !(hdr->status & irsdk_stConnected)) {
+           // text(L"Diconnected from iRacing");
             debug(L"Disconnected from iRacing");
             numHandles = 0;
             dataLen = 0;
@@ -1362,7 +1332,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
     mainWnd = CreateWindowW(
         szWindowClass, szTitle,
         WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME,
-        CW_USEDEFAULT, CW_USEDEFAULT, 864, 720,
+        CW_USEDEFAULT, CW_USEDEFAULT, 864, 840,
         NULL, NULL, hInst, NULL
     );
 
@@ -1388,27 +1358,28 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
     settings.setUndersteerOffsetWnd(slider(mainWnd, L"Understeer offset:", 464, 160, L"0", L"100", true));
     settings.setSopWnd(slider(mainWnd, L"SoP effect:", 464, 220, L"0", L"100", true));
     settings.setSopOffsetWnd(slider(mainWnd, L"SoP offset:", 464, 280, L"0", L"100", true));
+    settings.setUndersteerYawWnd(slider(mainWnd, L"Understeer Release Force:", 464, 340, L"0", L"100", true));
+   // settings.setUndersteerLateralWnd(slider(mainWnd, L"Understeer Force Multiplier:", 464, 400, L"1.0", L"3.0", true));
+    settings.setUndersteerLateralFactorWnd(combo(mainWnd, L"Understeer Force Multiplier:", 464, 400));
+
+
     settings.setUse360Wnd(
-        checkbox(
-            mainWnd, 
-            L" Use 360 Hz telemetry for suspension effects\r\n in direct modes?",
-            460, 340
-        )
+        checkbox(mainWnd, L" Use 360 Hz telemetry for suspension effects\r\n in direct modes?", 460, 465)
     );
     settings.setCarSpecificWnd(
-        checkbox(mainWnd, L" Use car specific settings?", 460, 400)
+        checkbox(mainWnd, L" Use car specific settings?", 460, 510)
     );
     settings.setReduceWhenParkedWnd(
-        checkbox(mainWnd, L" Reduce force when parked?", 460, 440)
+        checkbox(mainWnd, L" Reduce force when parked?", 460, 550)
     );
     settings.setRunOnStartupWnd(
-        checkbox(mainWnd, L" Run on startup?", 460, 480)
+        checkbox(mainWnd, L" Run on startup?", 460, 590)
     );
     settings.setStartMinimisedWnd(
-        checkbox(mainWnd, L" Start minimised?", 460, 520)
+        checkbox(mainWnd, L" Start minimised?", 460, 630)
     );
     settings.setDebugWnd(
-        checkbox(mainWnd, L"Debug logging?", 460, 560)
+        checkbox(mainWnd, L"Debug logging?", 460, 670)
     );
 
     int statusParts[] = { 256, 424, 864 };
@@ -1471,15 +1442,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     if (HIWORD(wParam) == CBN_SELCHANGE) {
                         if (wnd == settings.getDevWnd()) {
                             GUID oldDevice = settings.getFfbDevice();
-                            DWORD vidpid = 0;  
+                            DWORD vidpid = 0;
                             if (oldDevice != GUID_NULL)
-                                vidpid = getDeviceVidPid(ffdevice); 
+                                vidpid = getDeviceVidPid(ffdevice);
                             settings.setFfbDevice(SendMessage((HWND)lParam, CB_GETCURSEL, 0, 0));
                             if (vidpid != 0 && oldDevice != settings.getFfbDevice())
                                 hidGuardian->removeDevice(LOWORD(vidpid), HIWORD(vidpid), false);
                         }
                         else if (wnd == settings.getFfbWnd())
                             settings.setFfbType(SendMessage((HWND)lParam, CB_GETCURSEL, 0, 0));
+                        else if (wnd == settings.getUndersteerLateralFactorWnd())
+                            settings.setUndersteerLateralFactorType(SendMessage((HWND)lParam, CB_GETCURSEL, 0, 0));
                     }
                     else if (HIWORD(wParam) == BN_CLICKED) {
                         bool oldValue = SendMessage((HWND)lParam, BM_GETCHECK, 0, 0) == BST_CHECKED;
@@ -1536,6 +1509,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 settings.setSopFactor(reinterpret_cast<float &>(wParam), wnd);
             else if (wnd == settings.getSopOffsetWnd()->value)
                 settings.setSopOffset(reinterpret_cast<float &>(wParam), wnd);
+            else if (wnd == settings.getUndersteerYawWnd()->value)
+                settings.setUndersteerYawFactor(reinterpret_cast<float&>(wParam), wnd);
+
+  //          else if (wnd == settings.getUndersteerLateralWnd()->value)
+  //              settings.setUndersteerLateralFactor(reinterpret_cast<float&>(wParam), wnd);
+
+            
         }
         break;
              
@@ -1557,6 +1537,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 settings.setUndersteerFactor((float)SendMessage(wnd, TBM_GETPOS, 0, 0), wnd);
             else if (wnd == settings.getUndersteerOffsetWnd()->trackbar)
                 settings.setUndersteerOffset((float)SendMessage(wnd, TBM_GETPOS, 0, 0), wnd);
+            else if (wnd == settings.getUndersteerYawWnd()->trackbar)
+                settings.setUndersteerYawFactor((float)SendMessage(wnd, TBM_GETPOS, 0, 0), wnd);
+
+
+ //           else if (wnd == settings.getUndersteerLateralWnd()->trackbar)
+ //               settings.setUndersteerLateralFactor((float)SendMessage(wnd, TBM_GETPOS, 0, 0), wnd);
         }
         break;
 
@@ -1968,6 +1954,7 @@ void initDirectInput() {
 
     if (ffdevice && effect && ffdevice->GetDeviceInfo(&di) >= 0 && di.guidInstance == settings.getFfbDevice())
         return;
+    //text(L"initDirectInput: Releasing Wheel Connection");
 
     releaseDirectInput();
 
@@ -2059,6 +2046,8 @@ void initDirectInput() {
 
 void releaseDirectInput() {
 
+    //text(L"releaseDirectInput: Releasing Direct Input Connection");
+
     if (effect) {
         setFFB(0);
         EnterCriticalSection(&effectCrit);
@@ -2082,6 +2071,7 @@ void releaseDirectInput() {
 void reacquireDIDevice() {
 
     if (ffdevice == nullptr) {
+       // text(L"reaquireDIDevice: FFB failed to reaquire");
         debug(L"!! ffdevice was null during reacquire !!");
         return;
     }
@@ -2095,7 +2085,7 @@ void reacquireDIDevice() {
 
     if (effect == nullptr) {
         if (FAILED(ffdevice->CreateEffect(GUID_Sine, &dieff, &effect, nullptr))) {
-            text(L"Failed to create periodic effect during reacquire");
+           // text(L"Failed to create periodic effect during reacquire");
             LeaveCriticalSection(&effectCrit);
             return;
         }
@@ -2160,7 +2150,7 @@ inline void setFFB(int mag) {
 
 bool initVJD() {
 
-    WORD verDll, verDrv;
+    WORD verDrv;
     int maxVjDev;
     VjdStat vjdStatus = VJD_STAT_UNKN;
 
@@ -2168,14 +2158,8 @@ bool initVJD() {
         text(L"vJoy not enabled!");
         return false;
     }
-    else if (!DriverMatch(&verDll, &verDrv)) {
-        if (verDrv < verDll) {
-            text(L"vJoy driver version %04x < required version %04x!", verDrv, verDll);
-            return false;
-        }
-    }
-    
-    text(L"vJoy driver version %04x init OK", verDrv);
+    else
+        text(L"vJoy driver version %04x init OK", &verDrv);
 
     vjDev = 1;
 
@@ -2263,5 +2247,6 @@ void releaseAll() {
     RelinquishVJD(vjDev);
 
     irsdk_shutdown();
+   // text(L"releaseAll: Shutting down");
 
 }
